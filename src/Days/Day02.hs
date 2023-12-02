@@ -66,7 +66,7 @@ deriving instance Show Round
 
 type OutputA = Int
 
-type OutputB = Void
+type OutputB = Int
 
 ------------ PART A ------------
 partA :: Input -> OutputA
@@ -81,11 +81,23 @@ partA games =
     games
 
 isLegal :: Game -> Bool
-isLegal Game{ rounds } =
+isLegal Game { rounds } =
   all
     (\Round { red, green, blue } -> red <= 12 && green <= 13 && blue <= 14)
     rounds
 
 ------------ PART B ------------
 partB :: Input -> OutputB
-partB = error "Not implemented yet!"
+partB games =
+  foldl
+    (\acc game -> acc + getPower game)
+    0
+    games
+
+getPower :: Game -> Int
+getPower Game { rounds } =
+  let
+    red = maximum $ map (\r -> r.red) rounds
+    green = maximum $ map (\r -> r.green) rounds
+    blue = maximum $ map (\r -> r.blue) rounds
+  in red * green * blue
