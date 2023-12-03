@@ -79,6 +79,7 @@ library
     , time
     , vector
     , indexed-traversable
+    , linear
   default-language: Haskell2010
 
 executable aoc-template-exe
