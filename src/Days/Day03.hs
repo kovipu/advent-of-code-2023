@@ -28,53 +28,7 @@ runDay = R.runDay inputParser partA partB
 inputParser :: Parser Input
 inputParser = (takeWhile1 (/= '\n')) `sepBy` endOfLine
 
------------- TYPES ------------
-type Input = [Text]
-
-data Schem
-  = Part Int (V2 Int, V2 Int)
-  | Symbol Char (V2 Int)
-  deriving Show
-
-type Schems = [Schem]
-
-type OutputA = Int
-
-type OutputB = Void
-
------------- PART A ------------
-partA :: Input -> OutputA
-partA input =
-  let schems = mankeloi input
-   in foldl
-      (isPartNumber schems)
-      0
-      schems
-
-isPartNumber :: Schems -> Int -> Schem -> Int
-isPartNumber schems acc schem =
-  case schem of
-    Symbol _ _ -> acc
-    Part n (start, end) ->
-      -- search around start & end for symbols
-      if search schems start || search schems end
-         then acc + n
-         else acc
-
-search :: Schems -> V2 Int -> Bool
-search schems coords =
-  isJust $ find
-    (\schem ->
-      case schem of
-        Part _ _              -> False
-        Symbol _ symbolCoords -> isAdjacent coords symbolCoords
-    )
-    schems
-
-
-isAdjacent :: V2 Int -> V2 Int -> Bool
-isAdjacent (V2 x1 y1) (V2 x2 y2) = abs (x1 - x2) <= 1 && abs (y1 - y2) <= 1
-
+-- not actually Parsers.
 mankeloi :: [Text] -> Schems
 mankeloi input =
   ifoldl
@@ -111,7 +65,76 @@ readLine y line =
   (T.unpack line)
 
 
+------------ TYPES ------------
+type Input = [Text]
+
+data Schem
+  = Part Int (V2 Int, V2 Int)
+  | Symbol Char (V2 Int)
+  deriving Show
+
+type Schems = [Schem]
+
+type OutputA = Int
+
+type OutputB = Int
+
+------------ PART A ------------
+partA :: Input -> OutputA
+partA input =
+  let schems = mankeloi input
+   in foldl
+      (isPartNumber schems)
+      0
+      schems
+
+isPartNumber :: Schems -> Int -> Schem -> Int
+isPartNumber schems acc schem =
+  case schem of
+    Symbol _ _ -> acc
+    Part n (start, end) ->
+      -- search around start & end for symbols
+      if search schems start || search schems end
+         then acc + n
+         else acc
+
+search :: Schems -> V2 Int -> Bool
+search schems coords =
+  isJust $ find
+    (\schem ->
+      case schem of
+        Part _ _              -> False
+        Symbol _ symbolCoords -> isAdjacent coords symbolCoords
+    )
+    schems
+
+isAdjacent :: V2 Int -> V2 Int -> Bool
+isAdjacent (V2 x1 y1) (V2 x2 y2) = abs (x1 - x2) <= 1 && abs (y1 - y2) <= 1
 
 ------------ PART B ------------
 partB :: Input -> OutputB
-partB = error "Not implemented yet!"
+partB input =
+  let schems = mankeloi input
+    in foldl
+      (\acc schem ->
+        case schem of
+          Symbol '*' coords -> acc + getGearRatio coords schems
+          _                 -> acc
+      )
+      0
+      schems
+
+getGearRatio :: V2 Int -> Schems -> Int
+getGearRatio coords schems =
+  -- find adjacent numbers
+  let
+    adjacentParts = filter
+      (\schem ->
+        case schem of
+          Symbol _ _ -> False
+          Part _ (start, end) -> isAdjacent coords start || isAdjacent coords end
+      )
+      schems
+  in case adjacentParts of
+    [Part a _, Part b _] -> a * b
+    _                    -> 0
