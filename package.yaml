@@ -30,6 +30,8 @@ dependencies:
 - text
 - mtl
 - vector
+- indexed-traversable
+- linear
 
 library:
   source-dirs: src

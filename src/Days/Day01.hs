@@ -1,11 +1,11 @@
 module Days.Day01 (runDay) where
 
 {- ORMOLU_DISABLE -}
-import           Data.Char
-import           Data.Foldable.WithIndex
+import           Data.Char                 (isDigit)
+import           Data.Foldable.WithIndex   (FoldableWithIndex (ifoldl))
 import           Data.Map.Strict           (Map)
 import qualified Data.Map.Strict           as Map
-import           Data.Maybe
+import           Data.Maybe                ()
 import           Data.Set                  (Set)
 import qualified Data.Set                  as Set
 import           Data.Text                 (Text)
@@ -15,8 +15,9 @@ import           Data.Vector               (Vector)
 import qualified Data.Vector               as Vec
 import qualified Util.Util                 as U
 
-import           Data.Attoparsec.Text
-import           Data.Void
+import           Data.Attoparsec.Text      (Parser, endOfLine, sepBy,
+                                            takeWhile1)
+import           Data.Void                 ()
 import qualified Program.RunDay            as R (Day, runDay)
 {- ORMOLU_ENABLE -}
 
@@ -25,7 +26,7 @@ runDay = R.runDay inputParser partA partB
 
 ------------ PARSER ------------
 inputParser :: Parser Input
-inputParser = (takeWhile1 (/= '\n')) `sepBy` endOfLine
+inputParser = takeWhile1 (/= '\n') `sepBy` endOfLine
 
 ------------ TYPES ------------
 type Input = [Text]
@@ -57,18 +58,18 @@ matchLine' line =
 
     findBy f c st =
       ifoldl
-        (\idx acc@(prevFirst, _) (a, b) ->
-          let
-            match = TS.indices a line <> TS.indices b line
-          in
-          if not (null match) && f match `c` prevFirst
-             then (f match, idx)
-             else acc
+        ( \idx acc@(prevFirst, _) (a, b) ->
+            let
+              match = TS.indices a line <> TS.indices b line
+             in
+              if not (null match) && f match `c` prevFirst
+                then (f match, idx)
+                else acc
         )
         (st, -1)
         nums
-  in
-  (first * 10) + last
+   in
+    (first * 10) + last
 
 nums :: [(Text, Text)]
-nums = [ ("zero", "0"), ("one", "1"), ("two", "2"), ("three", "3"), ("four", "4"), ("five", "5"), ("six", "6"), ("seven", "7"), ("eight", "8"), ("nine", "9") ]
+nums = [("zero", "0"), ("one", "1"), ("two", "2"), ("three", "3"), ("four", "4"), ("five", "5"), ("six", "6"), ("seven", "7"), ("eight", "8"), ("nine", "9")]
