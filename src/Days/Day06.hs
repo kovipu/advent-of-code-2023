@@ -1,10 +1,10 @@
 module Days.Day06 (runDay) where
 
 {- ORMOLU_DISABLE -}
-import           Data.List
+import           Data.List            ()
 import           Data.Map.Strict      (Map)
 import qualified Data.Map.Strict      as Map
-import           Data.Maybe
+import           Data.Maybe           ()
 import           Data.Set             (Set)
 import qualified Data.Set             as Set
 import           Data.Vector          (Vector)
@@ -12,9 +12,9 @@ import qualified Data.Vector          as Vec
 import qualified Util.Util            as U
 
 import           Control.Applicative  (Alternative (many))
-import           Data.Attoparsec.Text
-import           Data.Void
-import           GHC.Float            (ceilingFloat)
+import           Data.Attoparsec.Text (Parser, decimal, sepBy1, space, string)
+import           Data.Void            ()
+import           GHC.Float            (ceilingDouble, ceilingFloat)
 import qualified Program.RunDay       as R (Day, runDay)
 {- ORMOLU_ENABLE -}
 
@@ -39,7 +39,7 @@ data Race = Race {time :: Int, record :: Int} deriving (Show)
 
 type OutputA = Int
 
-type OutputB = Void
+type OutputB = Int
 
 ------------ PART A ------------
 partA :: Input -> OutputA
@@ -50,16 +50,22 @@ solveRecord :: Race -> Int
 solveRecord Race{time, record} =
   -- d = x * (time - x)
   let
-    t :: Float
-    t = fromIntegral time
-    y :: Float
-    y = fromIntegral record + 1
+    t = fromIntegral time :: Double
+    y = fromIntegral record + 1 :: Double
     a = sqrt $ (t ^ 2) - (4.0 * y)
     x1 = -((-t) + a) / 2
     x2 = -((-t) - a) / 2
    in
-    (floor x2) - ceilingFloat x1 + 1
+    floor x2 - ceilingDouble x1 + 1
 
 ------------ PART B ------------
 partB :: Input -> OutputB
-partB = error "Not implemented yet!"
+partB input =
+  let
+    (time, record) =
+      foldl
+        (\(t, r) Race{time, record} -> (t <> show time, r <> show record))
+        ("", "")
+        input
+   in
+    solveRecord Race{time = read time, record = read record}
