@@ -9,6 +9,7 @@ import           Data.Foldable           (toList)
 import           Data.Foldable.WithIndex (FoldableWithIndex (ifoldl))
 import           Data.Functor            (($>))
 import           Data.List
+import           Data.List.NonEmpty      (sortWith)
 import           Data.Map.Strict         (Map)
 import qualified Data.Map.Strict         as Map
 import           Data.Maybe
@@ -35,7 +36,7 @@ parseHand = do
 
 parseCard :: Parser Card
 parseCard =
-  char 'A' $> Ace <|> char 'K' $> King <|> char 'Q' $> Queen <|> char 'J' $> Jack <|> char 'T' $> Ten <|> char '9' $> Nine <|> char '8' $> Eight <|> char '7' $> Seven <|> char '6' $> Six <|> char '5' $> Five <|> char '4' $> Four <|> char '3' $> Three <|> char '2' $> Two
+  char 'A' $> Ace <|> char 'K' $> King <|> char 'Q' $> Queen <|> char 'J' $> Joker <|> char 'T' $> Ten <|> char '9' $> Nine <|> char '8' $> Eight <|> char '7' $> Seven <|> char '6' $> Six <|> char '5' $> Five <|> char '4' $> Four <|> char '3' $> Three <|> char '2' $> Two
 
 ------------ TYPES ------------
 type Input = [Hand]
@@ -43,25 +44,29 @@ type Input = [Hand]
 data Hand = Hand {cards :: FixedList5 Card, bid :: Int}
   deriving (Show)
 
-data Card = Two | Three | Four | Five | Six | Seven | Eight | Nine | Ten | Jack | Queen | King | Ace
+data Card = Joker | Two | Three | Four | Five | Six | Seven | Eight | Nine | Ten | Queen | King | Ace
   deriving (Show, Eq, Ord)
 
 data HandType = High | OnePair | TwoPair | ThreeKind | FullHouse | FourKind | FiveKind
-  deriving (Eq, Ord)
+  deriving (Show, Eq, Ord)
 
 type OutputA = Int
 
-type OutputB = Void
+type OutputB = Int
 
 ------------ PART A ------------
 partA :: Input -> OutputA
-partA input = ifoldl (\idx acc Hand{bid} -> (idx + 1) * bid + acc) 0 $ sortBy compareHands input
+partA input =
+  ifoldl
+    (\idx acc Hand{bid} -> (idx + 1) * bid + acc)
+    0
+    $ sortBy (compareHands getHandType) input
 
--- compareHands :: Hand -> Hand -> Ordering
-compareHands Hand{cards = a} Hand{cards = b} =
+compareHands :: (FixedList5 Card -> HandType) -> Hand -> Hand -> Ordering
+compareHands typeFn Hand{cards = a} Hand{cards = b} =
   let
-    at = getHandType a
-    bt = getHandType b
+    at = typeFn a
+    bt = typeFn b
    in
     if at /= bt
       then compare at bt
@@ -89,4 +94,32 @@ findHigher (a : as) (b : bs)
 
 ------------ PART B ------------
 partB :: Input -> OutputB
-partB = error "Not implemented yet!"
+partB input =
+  ifoldl
+    (\idx acc Hand{bid} -> (idx + 1) * bid + acc)
+    0
+    $ sortBy (compareHands getHandType') input
+
+getHandType' :: FixedList5 Card -> HandType
+getHandType' cards
+  | findNCards 5 || numJokers == 5 = FiveKind
+  | findNCards 4 = FourKind
+  | findNCards 3 && findNCards 2 = FullHouse
+  | findNCards 3 = ThreeKind
+  | length (filter (\(_c, n) -> n == 2) frequencies') == 2 = TwoPair
+  | findNCards 2 = OnePair
+  | otherwise = High
+ where
+  frequencies = foldl (\acc c -> Map.insertWith (+) c 1 acc) Map.empty cards
+  -- move number of jokers into the card with most occurences.
+  numJokers = fromMaybe 0 $ Map.lookup Joker frequencies
+  frequencies' = Map.toList $ Map.delete Joker frequencies
+  (topCard, _) = last $ sortOn snd frequencies'
+  withJokers =
+    map
+      ( \(c, n) ->
+          if c == topCard then (c, n + numJokers) else (c, n)
+      )
+      frequencies'
+
+  findNCards num = isJust $ find (\(_c, n) -> num == n) withJokers
