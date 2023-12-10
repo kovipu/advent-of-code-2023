@@ -80,6 +80,9 @@ library
     , text
     , time
     , vector
+    , split
+    , fixed-list
+    , monad-extras
   default-language: Haskell2010
 
 executable aoc-template-exe
@@ -112,4 +115,7 @@ executable aoc-template-exe
     , text
     , time
     , vector
+    , split
+    , fixed-list
+    , monad-extras
   default-language: Haskell2010
