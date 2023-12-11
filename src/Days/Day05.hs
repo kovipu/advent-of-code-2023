@@ -2,6 +2,7 @@ module Days.Day05 (runDay) where
 
 {- ORMOLU_DISABLE -}
 import           Control.Applicative  (empty)
+import           Data.Function        (on)
 import           Data.List
 import           Data.Map.Strict      (Map)
 import qualified Data.Map.Strict      as Map
@@ -13,6 +14,8 @@ import qualified Data.Vector          as Vec
 import qualified Util.Util            as U
 
 import           Data.Attoparsec.Text
+import qualified Data.Foldable        as Foldable
+import           Data.List.Split      (chunksOf)
 import           Data.Void
 import           Debug.Trace          (trace)
 import qualified Program.RunDay       as R (Day, runDay)
@@ -42,7 +45,7 @@ parseSeedMap = do
   case nums of
     [destRangeStart, srcRangeStart, rangeLength] ->
       let offset = destRangeStart - srcRangeStart
-       in pure SeedMap{offset, srcRangeStart, rangeLength}
+       in pure SeedMap{offset, destRangeStart, srcRangeStart, rangeLength}
     _ ->
       empty
 
@@ -54,15 +57,16 @@ data Input = Input
   deriving (Show)
 
 data SeedMap = SeedMap
-  { offset        :: Int
-  , srcRangeStart :: Int
-  , rangeLength   :: Int
+  { offset         :: Int
+  , destRangeStart :: Int
+  , srcRangeStart  :: Int
+  , rangeLength    :: Int
   }
   deriving (Show)
 
 type OutputA = Int
 
-type OutputB = Void
+type OutputB = Int
 
 ------------ PART A ------------
 partA :: Input -> OutputA
@@ -80,10 +84,33 @@ getNewDest seed sMap =
   fromMaybe
     seed
     ( do
-        SeedMap{offset} <- find (\r -> r.srcRangeStart <= seed && seed <= r.srcRangeStart + r.rangeLength) sMap
+        SeedMap{offset} <- find (\r -> r.srcRangeStart <= seed && seed < r.srcRangeStart + r.rangeLength) sMap
         pure $ seed + offset
     )
 
 ------------ PART B ------------
 partB :: Input -> OutputB
-partB = error "Not implemented yet!"
+partB Input{seeds, seedMaps} =
+  let
+    newSeeds = (\[start, len] -> (start, start + len - 1)) <$> chunksOf 2 seeds
+    seedExists s = isJust $ find (\(start, end) -> start <= s && s <= end) newSeeds
+   in
+    -- start from smallest range -> go up layer by layer -> is there a corresponding seed?
+    fromJust $ find (seedExists . getSeedStart seedMaps) [0 ..]
+
+getSeedStart :: [[SeedMap]] -> Int -> Int
+getSeedStart seedMaps seed =
+  foldr
+    getStart
+    seed
+    seedMaps
+
+-- inverse of getNewDest
+getStart :: [SeedMap] -> Int -> Int
+getStart sMap seed =
+  fromMaybe
+    seed
+    ( do
+        SeedMap{offset} <- find (\r -> r.destRangeStart <= seed && seed < r.destRangeStart + r.rangeLength) sMap
+        pure $ seed - offset
+    )
