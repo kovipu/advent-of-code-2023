@@ -1,18 +1,18 @@
 module Days.Day10 (runDay) where
 
 {- ORMOLU_DISABLE -}
-import           Data.Attoparsec.Text
+import           Data.Attoparsec.Text    (Parser, endOfLine, sepBy, takeWhile1)
 import           Data.Foldable.WithIndex (FoldableWithIndex (ifoldl))
-import           Data.List
+import           Data.List               (find)
 import           Data.Map.Strict         (Map, (!))
 import qualified Data.Map.Strict         as Map
-import           Data.Maybe
+import           Data.Maybe              (fromJust)
 import           Data.Set                (Set)
 import qualified Data.Set                as Set
 import           Data.Text               (Text, unpack)
 import           Data.Vector             (Vector)
 import qualified Data.Vector             as Vec
-import           Data.Void
+import           Data.Void               (Void)
 import           Debug.Trace             (trace)
 import           Linear.V2               (V2 (..))
 import qualified Program.RunDay          as R (Day, runDay)
@@ -44,7 +44,7 @@ data Cardinal = North | South | East | West
 
 type OutputA = Int
 
-type OutputB = Void
+type OutputB = Int
 
 ------------ PART A ------------
 partA :: Input -> OutputA
@@ -52,7 +52,7 @@ partA input = step firstPipe 1 `div` 2
  where
   pipeMap = mankeloi input
   (start, _) = Map.elemAt 0 $ Map.filter (== Start) pipeMap
-  firstPipe = findFirstPipe pipeMap (trace ("start" ++ show start) start)
+  firstPipe = findFirstPipe pipeMap start
 
   -- go around the pipe recursively till back at start.
   step (dir, coords) n =
@@ -60,26 +60,26 @@ partA input = step firstPipe 1 `div` 2
       then n
       else step (newDir, newCoords) (n + 1)
    where
-    tile = pipeMap ! trace ("coords:" ++ show coords) coords
-    newDir =
-      case tile of
-        Pipe a b -> getNewDir dir a b
-        _        -> error "not a pipe"
+    tile = pipeMap ! coords
+    newDir = getNewDir dir tile
+    newCoords = getNewCoords coords newDir
 
-    getNewDir dir a b
-      | dir == North = if a /= South then a else b
-      | dir == South = if a /= North then a else b
-      | dir == East = if a /= West then a else b
-      | a /= East = a
-      | otherwise = b
+getNewDir :: Cardinal -> Tile -> Cardinal
+getNewDir dir (Pipe a b)
+  | dir == North = if a /= South then a else b
+  | dir == South = if a /= North then a else b
+  | dir == East = if a /= West then a else b
+  | a /= East = a
+  | otherwise = b
+getNewDir _ _ = error "not a pipe"
 
-    (V2 x y) = coords
-    newCoords =
-      case newDir of
-        North -> V2 x (y - 1)
-        South -> V2 x (y + 1)
-        East  -> V2 (x + 1) y
-        West  -> V2 (x - 1) y
+getNewCoords :: Coords -> Cardinal -> Coords
+getNewCoords (V2 x y) dir =
+  case dir of
+    North -> V2 x (y - 1)
+    South -> V2 x (y + 1)
+    East  -> V2 (x + 1) y
+    West  -> V2 (x - 1) y
 
 -- which pipe connects to the start?
 findFirstPipe :: PipeMap -> Coords -> (Cardinal, Coords)
@@ -104,7 +104,7 @@ findFirstPipe pipeMap (V2 x y) =
  where
   isConnected :: (Cardinal, Coords) -> Bool
   isConnected (cardinal, coords) =
-    case trace ("tile " ++ show tile) tile of
+    case tile of
       Just (Pipe a b) -> a == cardinal || b == cardinal
       _               -> False
    where
@@ -138,4 +138,55 @@ mankeloi =
 
 ------------ PART B ------------
 partB :: Input -> OutputB
-partB = error "Not implemented yet!"
+partB input = interiorPoints pipes $ shoelace pipes
+ where
+  pipes = step firstPipe []
+
+  pipeMap = mankeloi input
+  (start, _) = Map.elemAt 0 $ Map.filter (== Start) pipeMap
+  firstPipe = findFirstPipe pipeMap start
+
+  -- go around the pipe counterclockwise and collect vertices
+  step (dir, coords) vertices =
+    if tile == Start
+      then vertices
+      else step (newDir, newCoords) newVertices
+   where
+    tile = pipeMap ! coords
+    newDir = getNewDir dir tile
+    newCoords = getNewCoords coords newDir
+    newVertices = coords : vertices
+
+-- Shoelace theorem:
+-- List all vertices in an anti-clockwise order
+-- multiply all x coordinates with the y coordinate below
+-- multiply all y coordinates with the x coordinate below
+-- subtract second from first, get absolute value
+-- divide by 2
+shoelace :: [Coords] -> Int
+shoelace coords = abs (xSum - ySum) `div` 2
+ where
+  (xSum, ySum) =
+    foldl
+      ( \(xAcc, yAcc) (V2 x y, V2 x' y') ->
+          ( xAcc + (x * y')
+          , yAcc + (y * x')
+          )
+      )
+      (0, 0)
+      (zip coords (rotate coords))
+
+rotate :: [Coords] -> [Coords]
+rotate (x : xs) = xs <> [x]
+
+-- Pick's Formula:
+-- A = I + B/2 - 1
+-- where
+--   A = area
+--   I = interior lattice points
+--   B = Boundary lattice points
+-- I = A - B/2 + 1
+interiorPoints :: [Coords] -> Int -> Int
+interiorPoints coords area =
+  -- the result was off by one for some reason, so no +1
+  area - (length coords `div` 2)
