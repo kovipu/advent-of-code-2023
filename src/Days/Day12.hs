@@ -5,13 +5,15 @@ import           Data.List
 import qualified Data.List            as List
 import           Data.Map.Strict      (Map)
 import qualified Data.Map.Strict      as Map
-import           Data.Maybe           (Maybe (..))
+import           Data.Maybe           (Maybe (..), listToMaybe, mapMaybe)
 import           Data.Set             (Set)
 import qualified Data.Set             as Set
+import           Data.Text            (Text)
 import           Data.Vector          (Vector)
 import qualified Data.Vector          as Vec
 import qualified Util.Util            as U
 
+import           Control.Applicative  (Alternative (some))
 import           Data.Attoparsec.Text
 import           Data.Void
 import           Debug.Trace          (trace, traceShow)
@@ -32,68 +34,47 @@ parseLine = do
   pure (chars, nums)
 
 ------------ TYPES ------------
-type Input = [([Char], [Int])]
+type Input = [Line]
 
-type OutputA = Void
+type Line = (String, [Int])
+
+type OutputA = Int
 
 type OutputB = Void
 
 ------------ PART A ------------
 partA :: Input -> OutputA
-partA = error "Not implemented yet!"
+partA input = sum $ map (\(str, nums) -> length $ filter (matchesRule nums) $ createCombinations str) input
 
--- where
---  (chars, nums) = input !! 5
+createCombinations :: String -> [String]
+createCombinations str =
+  -- recurse until string ends -> return tails
+  -- switch the 1st question mark into both # and .
+  -- if no question marks left -> stop recursion
+  if '?' `notElem` str
+    then [str]
+    else concatMap createCombinations [replace str '#', replace str '.']
+ where
+  -- replace first ? with c
+  replace :: String -> Char -> String
+  replace ('?' : xs) c = c : xs
+  replace (x : xs) c   = x : replace xs c
+  replace "" _         = ""
 
--- countArrangements :: [Char] -> [] [Char] -> [Int] -> ([[Char]], Int)
--- countArrangements start handled chars nums =
---   foldl
---     ( \(handled', acc) t ->
---         let (h, n) = numValidArrangements start handled' t nums
---          in (h, acc + n)
---     )
---     (handled, 0)
---     borkedTails
---  where
---   -- tails match multiple times because ofcourse they do
---   -- how to filter out dupes?
---   -- 1) remove tails that start with multiple .
---   -- 2) remove tails that have been handled
+matchesRule :: [Int] -> String -> Bool
+matchesRule [] str = '#' `notElem` str
+matchesRule (n : ns) str =
+  -- str must have nums of #'s in a row
+  -- remove all prefixing .
+  -- is head exactly n #'s?
+  -- if not -> False
+  -- if yes -> recurse
+  (length str' >= n && all (== '#') (List.take n str') && nth str' n /= Just '#') && matchesRule ns (drop (n + 1) str')
+ where
+  str' = dropWhile (== '.') str
 
---   borkedTails = filter (\t -> safeHead t /= Just '.') $ tails chars
-
---   numValidArrangements handled' chars' nums' =
---     case nums' of
---       [] -> (handled', 1)
---       (n : ns) ->
---         -- each tail of chars could match
---         if headMatches chars' n
---           then countArrangements (start <> List.take n chars') (drop (n + 1) chars') ns
---           else (handled', 0)
-
---   headMatches chars' n =
---     -- are first n characters either # or ?
---     -- and the n+1-th a . or ? or empty
---     length chars' >= n && notElem '.' (List.take n chars') && nth chars' n /= Just '#'
-
---   safeHead l = case l of
---     [] -> Nothing
---     _  -> Just $ head l
-
---   nth l n =
---     if n >= length l then Nothing else Just $ l !! n
-
--- lg v = trace v v
-
--- isValidArrangement :: [Char] -> Int -> Bool
--- isValidArrangement chars n =
---   length a == n && all (\c -> c == '?' || c == '#') a && e /= Just '#'
---  where
---   a = List.take n chars
---   e = chars `nth` n
-
--- if tail startsWith '#/?' * num + ' /?'
--- -> recurse with those removed and the number removed
+  nth l n =
+    if n >= length l then Nothing else Just $ l !! n
 
 ------------ PART B ------------
 partB :: Input -> OutputB
